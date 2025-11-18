@@ -13,15 +13,24 @@ datasource db {
 model SourceDataset {
   id             String   @id @default(uuid())
   name           String
+  description    String?  @db.Text
   type           DatasetType
+  status         DatasetStatus @default(draft)
   rawStorageKey  String?
+  config         Json?    // Import/export configuration
+  statistics     Json?    // Cached statistics (count, avg quality, etc)
   createdAt      DateTime @default(now())
   updatedAt      DateTime @updatedAt
 
   examples       Example[]
   exports        DatasetExport[]
+  versions       DatasetVersion[]
+  tags           DatasetTag[]
+  jobs           ProcessingJob[]
 
   @@index([createdAt])
+  @@index([status])
+  @@index([type])
 }
 
 model Example {
@@ -31,13 +40,18 @@ model Example {
   outputText      String   @db.Text
   metaJson        Json?
   qualityScore    Float?
+  flags           String[] @default([]) // For marking issues: ["too-short", "contains-pii", etc]
+  reviewStatus    ReviewStatus @default(pending)
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
 
   sourceDataset   SourceDataset @relation(fields: [sourceDatasetId], references: [id], onDelete: Cascade)
+  tags            ExampleTag[]
+  annotations     Annotation[]
 
   @@index([sourceDatasetId])
   @@index([qualityScore])
+  @@index([reviewStatus])
 }
 
 model DatasetExport {
@@ -46,6 +60,7 @@ model DatasetExport {
   sourceIds  Json     // Array of source dataset IDs
   format     ExportFormat
   filePath   String
+  statistics Json?    // Quality metrics, counts, etc
   createdAt  DateTime @default(now())
 
   datasets   SourceDataset[]
@@ -53,14 +68,178 @@ model DatasetExport {
   @@index([createdAt])
 }
 
+// ============================================================================
+// Phase 3: New Entities
+// ============================================================================
+
+model Tag {
+  id          String   @id @default(uuid())
+  name        String   @unique
+  category    String?  // For grouping tags: "domain", "quality", "topic"
+  color       String?  // Hex color for UI
+  description String?
+  createdAt   DateTime @default(now())
+
+  datasets    DatasetTag[]
+  examples    ExampleTag[]
+
+  @@index([category])
+}
+
+model DatasetTag {
+  id        String   @id @default(uuid())
+  datasetId String
+  tagId     String
+  createdAt DateTime @default(now())
+
+  dataset   SourceDataset @relation(fields: [datasetId], references: [id], onDelete: Cascade)
+  tag       Tag           @relation(fields: [tagId], references: [id], onDelete: Cascade)
+
+  @@unique([datasetId, tagId])
+}
+
+model ExampleTag {
+  id        String   @id @default(uuid())
+  exampleId String
+  tagId     String
+  createdAt DateTime @default(now())
+
+  example   Example @relation(fields: [exampleId], references: [id], onDelete: Cascade)
+  tag       Tag     @relation(fields: [tagId], references: [id], onDelete: Cascade)
+
+  @@unique([exampleId, tagId])
+}
+
+model DatasetVersion {
+  id          String   @id @default(uuid())
+  datasetId   String
+  version     Int      // Incremental version number
+  snapshotData Json    // Serialized dataset state
+  changeLog   String?  @db.Text
+  createdBy   String?  // User ID or identifier
+  createdAt   DateTime @default(now())
+
+  dataset     SourceDataset @relation(fields: [datasetId], references: [id], onDelete: Cascade)
+
+  @@unique([datasetId, version])
+  @@index([datasetId])
+  @@index([createdAt])
+}
+
+model QualityRule {
+  id          String      @id @default(uuid())
+  name        String
+  description String?     @db.Text
+  ruleType    RuleType
+  condition   Json        // Rule definition: { "minLength": 10, "maxLength": 1000, etc }
+  severity    RuleSeverity @default(warning)
+  isActive    Boolean     @default(true)
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
+
+  @@index([isActive])
+  @@index([ruleType])
+}
+
+model ProcessingJob {
+  id          String      @id @default(uuid())
+  datasetId   String?
+  jobType     JobType
+  status      JobStatus   @default(pending)
+  progress    Float       @default(0) // 0-100
+  config      Json?       // Job-specific configuration
+  result      Json?       // Job results or error details
+  startedAt   DateTime?
+  completedAt DateTime?
+  createdAt   DateTime    @default(now())
+
+  dataset     SourceDataset? @relation(fields: [datasetId], references: [id], onDelete: SetNull)
+
+  @@index([status])
+  @@index([jobType])
+  @@index([createdAt])
+}
+
+model Annotation {
+  id          String       @id @default(uuid())
+  exampleId   String
+  comment     String       @db.Text
+  annotationType AnnotationType
+  createdBy   String?      // User identifier
+  createdAt   DateTime     @default(now())
+
+  example     Example @relation(fields: [exampleId], references: [id], onDelete: Cascade)
+
+  @@index([exampleId])
+  @@index([annotationType])
+}
+
+// ============================================================================
+// Enums
+// ============================================================================
+
 enum DatasetType {
   chat_log
   faq
   custom
 }
 
+enum DatasetStatus {
+  draft
+  processing
+  ready
+  archived
+}
+
 enum ExportFormat {
   openai_finetune
   jsonl
   csv
+}
+
+enum ReviewStatus {
+  pending
+  approved
+  rejected
+  needs_revision
+}
+
+enum RuleType {
+  length_check
+  keyword_presence
+  keyword_absence
+  quality_threshold
+  format_validation
+  custom
+}
+
+enum RuleSeverity {
+  info
+  warning
+  error
+  critical
+}
+
+enum JobType {
+  import
+  clean
+  export
+  quality_check
+  batch_tag
+  version_snapshot
+}
+
+enum JobStatus {
+  pending
+  running
+  completed
+  failed
+  cancelled
+}
+
+enum AnnotationType {
+  comment
+  correction
+  flag
+  approval
 }
