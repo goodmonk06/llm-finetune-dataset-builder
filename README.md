@@ -1,346 +1,502 @@
 # LLM Fine-tune Dataset Builder
 
-A comprehensive tool for building, cleaning, and exporting LLM fine-tuning datasets from raw conversation logs, FAQs, and Q&A pairs.
+Transform raw conversation logs, FAQs, and Q&A pairs into production-ready fine-tuning datasets for LLMs like GPT-3.5 and GPT-4.
 
-## Features
+## Overview
 
-- **Import from multiple formats**: JSON chat logs, CSV files, FAQs
-- **AI-powered cleaning**: Use OpenAI to normalize, clean, and score data quality
-- **Flexible export**: Export to OpenAI fine-tuning format, JSONL, or CSV
-- **REST API**: Programmatic access to all dataset operations
-- **Web UI**: Browse and preview datasets in your browser
-- **CLI**: Powerful command-line interface for batch operations
+This tool provides an end-to-end pipeline for building high-quality fine-tuning datasets:
+
+1. **Import** data from multiple formats (JSON chat logs, CSV files, FAQs)
+2. **Clean** and normalize with AI-powered quality scoring
+3. **Export** to OpenAI fine-tuning format, JSONL, or CSV
+4. **Browse** datasets via web UI or REST API
+
+Built for teams who need repeatable, scalable dataset preparation workflows.
 
 ## Tech Stack
 
-- **Backend**: Fastify + TypeScript
-- **Database**: Prisma + PostgreSQL
-- **CLI**: Commander.js
-- **AI Integration**: OpenAI API for data cleaning
-- **UI**: Minimal HTML/JavaScript interface
+**Backend**
+- Fastify (REST API server)
+- TypeScript (type-safe development)
+- Prisma (type-safe ORM)
+- PostgreSQL (relational database)
+- Zod (runtime validation)
 
-## Quick Start
+**Services**
+- OpenAI API (optional, for data cleaning)
+- Commander.js (CLI framework)
 
-### 1. Installation
+**Testing & DX**
+- Vitest (unit testing)
+- Docker & Docker Compose (containerization)
+- ESLint & Prettier (code quality)
 
-```bash
-# Clone the repository
-git clone <your-repo-url>
-cd llm-finetune-dataset-builder
+## Domain Model
 
-# Install dependencies
-npm install
-
-# Set up environment variables
-cp .env.example .env
-# Edit .env and add your DATABASE_URL and OPENAI_API_KEY
+```
+SourceDataset (1) ---< (N) Example
+       |
+       |
+       v
+DatasetExport (references SourceDataset IDs)
 ```
 
-### 2. Database Setup
+**SourceDataset**: Represents an imported dataset
+- `id`, `name`, `type` (chat_log | faq | custom)
+- `createdAt`, `updatedAt`
+
+**Example**: Individual training examples
+- `id`, `inputText`, `outputText`
+- `qualityScore` (0-1, from AI cleaning)
+- `metaJson` (flexible metadata)
+- References `SourceDataset`
+
+**DatasetExport**: Export records
+- `id`, `name`, `format` (openai_finetune | jsonl | csv)
+- `sourceIds` (array of dataset IDs)
+- `filePath`
+
+## Getting Started
+
+### Requirements
+
+- Node.js 18+
+- PostgreSQL 14+
+- Docker & Docker Compose (optional)
+- OpenAI API key (optional, for cleaning features)
+
+### Setup Steps
+
+#### 1. Clone and Install
+
+```bash
+git clone <repository-url>
+cd llm-finetune-dataset-builder
+npm install
+```
+
+#### 2. Configure Environment
+
+```bash
+cp .env.example .env
+```
+
+Edit `.env`:
+
+```env
+DATABASE_URL="postgresql://postgres:password@localhost:5432/llm_finetune_db"
+OPENAI_API_KEY="sk-..."  # Optional
+PORT=3000
+```
+
+#### 3. Start Database
+
+**Option A: Docker (Recommended)**
+
+```bash
+docker compose up -d postgres
+```
+
+**Option B: Local PostgreSQL**
+
+```bash
+# Create database
+createdb llm_finetune_db
+```
+
+#### 4. Initialize Database
 
 ```bash
 # Generate Prisma client
 npm run db:generate
 
-# Push schema to database
+# Push schema
 npm run db:push
+
+# Seed with sample data
+npm run db:seed
 ```
 
-### 3. Start the Server
+#### 5. Start Development Server
 
 ```bash
-# Development mode
 npm run dev
-
-# Or build and run production
-npm run build
-npm start
 ```
 
-The API will be available at `http://localhost:3000` and the UI at `http://localhost:3000/ui/`
+Server runs at `http://localhost:3000`
 
-## CLI Usage
+Web UI at `http://localhost:3000/ui/`
 
-### Import Chat Logs
-
-Import conversation logs from JSON or CSV files:
+### Production Deployment
 
 ```bash
-# Import chat log
-npm run cli import-chat -- --file ./examples/chat_log.json --name "Customer Support Chats"
+# Start all services with Docker Compose
+docker compose up -d
 
-# Import FAQ
-npm run cli import-chat -- --file ./examples/faq.json --type faq --name "Product FAQ"
+# View logs
+docker compose logs -f app
+
+# Stop services
+docker compose down
 ```
 
-**Expected JSON format for chat logs:**
+## Example Flow: End-to-End Vertical Slice
 
+This section demonstrates a complete workflow from import to export.
+
+### 1. Import Chat Logs
+
+```bash
+npm run cli import-chat -- --file ./examples/chat_log.json --name "Support Chats"
+```
+
+Output:
+```
+✅ Import successful!
+Dataset ID: abc123...
+Examples imported: 8
+```
+
+### 2. View via API
+
+```bash
+curl http://localhost:3000/datasets
+```
+
+Response:
 ```json
-[
-  {
-    "messages": [
-      { "role": "user", "content": "How do I reset my password?" },
-      { "role": "assistant", "content": "You can reset your password by clicking..." }
-    ],
-    "metadata": { "category": "support" }
-  }
-]
+{
+  "datasets": [
+    {
+      "id": "abc123...",
+      "name": "Support Chats",
+      "type": "chat_log",
+      "_count": { "examples": 8 },
+      "createdAt": "2024-01-15T10:00:00Z"
+    }
+  ]
+}
 ```
 
-**Expected JSON format for FAQs:**
+### 3. List Examples
 
+```bash
+curl http://localhost:3000/datasets/abc123.../examples?limit=2
+```
+
+Response:
 ```json
-[
-  {
-    "question": "What are your business hours?",
-    "answer": "We're open Monday-Friday, 9am-5pm EST.",
-    "category": "general",
-    "tags": ["hours", "support"]
-  }
-]
+{
+  "examples": [
+    {
+      "id": "ex1...",
+      "inputText": "How do I reset my password?",
+      "outputText": "Click 'Forgot Password' on the login page...",
+      "qualityScore": null
+    }
+  ],
+  "total": 8,
+  "limit": 2,
+  "offset": 0
+}
 ```
 
-### Clean Data with AI
-
-Use OpenAI to clean, normalize, and score data quality:
+### 4. Clean Data with AI (Optional)
 
 ```bash
-npm run cli clean -- --dataset <dataset-id> --limit 100
+npm run cli clean -- --dataset abc123... --limit 10
 ```
 
-This will:
-- Remove PII (emails, phone numbers, etc.)
-- Fix typos and grammar
-- Normalize formatting
-- Assign quality scores (0-1)
+This normalizes text, removes PII, and assigns quality scores:
 
-### Export Datasets
+```
+Processing 1/8... ✅ (0.95)
+Processing 2/8... ✅ (0.92)
+...
+📊 Cleaning complete!
+High quality (>=0.5): 8
+```
 
-Export your cleaned data to various formats:
+### 5. Export to OpenAI Format
 
 ```bash
-# Export to OpenAI fine-tuning format
-npm run cli export -- --dataset <dataset-id> --format openai_finetune
-
-# Export only high-quality examples
-npm run cli export -- --dataset <dataset-id> --format openai_finetune --min-quality 0.7
+npm run cli export -- --dataset abc123... --format openai_finetune
 ```
 
-**OpenAI fine-tuning format example:**
+Output file `exports/export_abc123_1234567890.jsonl`:
 
 ```jsonl
-{"messages": [{"role": "user", "content": "How do I reset my password?"}, {"role": "assistant", "content": "Click the 'Forgot Password' link on the login page..."}]}
-{"messages": [{"role": "user", "content": "What are your business hours?"}, {"role": "assistant", "content": "We're open Monday-Friday, 9am-5pm EST."}]}
+{"messages": [{"role": "user", "content": "How do I reset my password?"}, {"role": "assistant", "content": "Click 'Forgot Password' on the login page..."}]}
+{"messages": [{"role": "user", "content": "What are your business hours?"}, {"role": "assistant", "content": "Monday-Friday, 9am-5pm EST."}]}
 ```
 
-### List Datasets
+### 6. Browse in Web UI
 
-View all your datasets:
+Visit `http://localhost:3000/ui/` to:
+- View all datasets
+- Preview examples
+- See quality scores
+- Check export history
+
+### 7. Use with OpenAI
 
 ```bash
-# Simple list
-npm run cli list
+# Upload to OpenAI
+openai api files.create -f exports/export_abc123_1234567890.jsonl -p fine-tune
 
-# Verbose mode with sample examples
-npm run cli list -- --verbose
+# Create fine-tuning job
+openai api fine_tuning.jobs.create -t file-xyz123 -m gpt-3.5-turbo
 ```
 
-## API Endpoints
+## Available Scripts
+
+```bash
+# Development
+npm run dev          # Start dev server with hot reload
+npm run build        # Build TypeScript
+npm start            # Run production server
+
+# CLI
+npm run cli <command>  # Run CLI commands
+
+# Database
+npm run db:generate  # Generate Prisma client
+npm run db:push      # Push schema to database
+npm run db:migrate   # Create migration
+npm run db:seed      # Seed with sample data
+npm run db:studio    # Open Prisma Studio GUI
+
+# Testing & Quality
+npm test             # Run tests in watch mode
+npm run test:run     # Run tests once
+npm run lint         # Lint code
+npm run format       # Format code
+```
+
+## CLI Commands
+
+### import-chat
+
+Import conversation logs or FAQs.
+
+```bash
+npm run cli import-chat -- \
+  --file ./data/chats.json \
+  --name "Customer Support" \
+  --type chat_log
+```
+
+Options:
+- `-f, --file <path>` - Input file (JSON or CSV) **required**
+- `-n, --name <name>` - Dataset name (defaults to filename)
+- `-t, --type <type>` - Type: `chat_log` or `faq` (default: `chat_log`)
+
+### clean
+
+AI-powered data cleaning and quality scoring.
+
+```bash
+npm run cli clean -- \
+  --dataset <dataset-id> \
+  --limit 100 \
+  --quality-threshold 0.7
+```
+
+Options:
+- `-d, --dataset <id>` - Dataset ID **required**
+- `-l, --limit <number>` - Max examples to process (default: 100)
+- `--quality-threshold <number>` - Min quality to keep (default: 0.5)
+
+### export
+
+Export datasets to various formats.
+
+```bash
+npm run cli export -- \
+  --dataset <dataset-id> \
+  --format openai_finetune \
+  --min-quality 0.8
+```
+
+Options:
+- `-d, --dataset <id>` - Dataset ID **required**
+- `-f, --format <format>` - Format: `openai_finetune`, `jsonl`, `csv` (default: `openai_finetune`)
+- `-o, --output <name>` - Custom output filename
+- `--min-quality <number>` - Exclude examples below threshold
+
+### list
+
+List all datasets and statistics.
+
+```bash
+npm run cli list           # Simple list
+npm run cli list -- -v     # Verbose with samples
+```
+
+## REST API
 
 ### Datasets
 
-- `GET /datasets` - List all datasets
-- `GET /datasets/:id` - Get dataset details
-- `POST /datasets` - Create a new dataset
-- `DELETE /datasets/:id` - Delete a dataset
+```
+GET    /datasets           List all datasets
+GET    /datasets/:id       Get dataset details
+POST   /datasets           Create dataset
+DELETE /datasets/:id       Delete dataset
+```
 
 ### Examples
 
-- `GET /datasets/:datasetId/examples` - List examples (supports pagination)
-- `GET /examples/:id` - Get single example
-- `POST /examples` - Create an example
-- `PATCH /examples/:id` - Update an example
-- `DELETE /examples/:id` - Delete an example
+```
+GET    /datasets/:id/examples  List examples (paginated)
+GET    /examples/:id           Get single example
+POST   /examples               Create example
+PATCH  /examples/:id           Update example
+DELETE /examples/:id           Delete example
+```
 
 ### Exports
 
-- `GET /exports` - List all exports
-- `GET /exports/:id` - Get export details
-- `POST /exports` - Create and execute an export
+```
+GET    /exports            List all exports
+GET    /exports/:id        Get export details
+POST   /exports            Create and execute export
+```
 
-## Using with OpenAI Fine-tuning
+### Error Responses
 
-After exporting your dataset in `openai_finetune` format:
+All errors follow this format:
 
-### 1. Upload the file
+```json
+{
+  "error": {
+    "message": "Dataset not found",
+    "code": "NOT_FOUND",
+    "details": {}
+  },
+  "timestamp": "2024-01-15T10:00:00Z"
+}
+```
+
+## Testing
+
+Run the test suite:
 
 ```bash
-openai api files.create -f exports/your_export.jsonl -p fine-tune
+npm test              # Watch mode
+npm run test:run      # Single run
 ```
 
-### 2. Create a fine-tuning job
+Tests cover:
+- Schema validation (Zod types)
+- Import service parsing logic
+- Export service formatting
+- Error handling
 
-```bash
-openai api fine_tuning.jobs.create -t file-<your-file-id> -m gpt-3.5-turbo
-```
+## Demo Credentials
 
-### 3. Monitor the job
+After running `npm run db:seed`, you'll have:
 
-```bash
-openai api fine_tuning.jobs.get -i <job-id>
-```
+- **2 datasets** (Customer Support Chats, Product FAQ)
+- **18 examples** with quality scores
+- **1 sample export** record
 
-### 4. Use your fine-tuned model
+Visit `http://localhost:3000/ui/` to browse the seeded data.
 
-```bash
-openai api chat_completions.create -m ft:gpt-3.5-turbo:your-org:custom-suffix
-```
+## Future Extensions
 
-## Database Schema
+**Short-term improvements:**
+- [ ] Batch import via API endpoint
+- [ ] Quality filtering in web UI
+- [ ] Example editing interface
+- [ ] Export format preview
 
-### SourceDataset
-- `id` (UUID)
-- `name` (String)
-- `type` (chat_log | faq | custom)
-- `rawStorageKey` (String, optional)
-- `createdAt` (DateTime)
+**Medium-term features:**
+- [ ] Support for JSONL import
+- [ ] Custom data transformations
+- [ ] Multi-dataset merging
+- [ ] Deduplication logic
 
-### Example
-- `id` (UUID)
-- `sourceDatasetId` (UUID, foreign key)
-- `inputText` (Text)
-- `outputText` (Text)
-- `metaJson` (JSON, optional)
-- `qualityScore` (Float, 0-1)
-- `createdAt` (DateTime)
-
-### DatasetExport
-- `id` (UUID)
-- `name` (String)
-- `sourceIds` (JSON array)
-- `format` (openai_finetune | jsonl | csv)
-- `filePath` (String)
-- `createdAt` (DateTime)
-
-## Project Structure
-
-```
-llm-finetune-dataset-builder/
-├── prisma/
-│   └── schema.prisma          # Database schema
-├── src/
-│   ├── cli/
-│   │   ├── index.ts           # CLI entry point
-│   │   └── commands/          # CLI commands
-│   ├── lib/
-│   │   └── db.ts              # Prisma client
-│   ├── routes/
-│   │   ├── datasets.ts        # Dataset API routes
-│   │   ├── examples.ts        # Example API routes
-│   │   └── exports.ts         # Export API routes
-│   ├── services/
-│   │   ├── import.service.ts  # Import logic
-│   │   ├── export.service.ts  # Export logic
-│   │   └── openai.service.ts  # OpenAI integration
-│   ├── types/
-│   │   └── index.ts           # TypeScript types
-│   └── server.ts              # Fastify server
-├── public/
-│   └── index.html             # Web UI
-├── examples/                  # Sample data files
-├── exports/                   # Generated export files
-└── package.json
-```
-
-## Development
-
-```bash
-# Run tests (if added)
-npm test
-
-# Lint code
-npm run lint
-
-# Format code
-npm run format
-
-# Open Prisma Studio (database GUI)
-npm run db:studio
-
-# Create a migration
-npm run db:migrate
-```
-
-## Environment Variables
-
-Create a `.env` file with:
-
-```env
-DATABASE_URL="postgresql://user:password@localhost:5432/llm_finetune_db"
-OPENAI_API_KEY="sk-..."  # Optional, only needed for cleaning
-PORT=3000
-```
-
-## Best Practices
-
-### Data Quality
-
-1. **Import raw data first** - Don't manually clean before importing
-2. **Use AI cleaning** - Let OpenAI handle normalization and quality scoring
-3. **Filter by quality** - Only export examples with quality >= 0.7
-4. **Review samples** - Check a few examples in the UI before final export
-
-### Fine-tuning Tips
-
-1. **Minimum examples**: 50-100 for testing, 500+ for production
-2. **Diverse data**: Include various question types and scenarios
-3. **Consistent format**: Ensure all examples follow the same structure
-4. **Quality over quantity**: Better to have 100 great examples than 1000 mediocre ones
+**Long-term vision:**
+- [ ] Version control for datasets
+- [ ] A/B testing of cleaned vs raw data
+- [ ] Integration with model training platforms
+- [ ] Automated quality benchmarking
 
 ## Troubleshooting
 
-### Database Connection Issues
+### Database Connection
 
 ```bash
 # Check if PostgreSQL is running
-psql -U postgres
+pg_isready
 
-# Verify DATABASE_URL in .env
+# Verify connection string
 echo $DATABASE_URL
 ```
 
-### OpenAI API Errors
+### Port Already in Use
 
-- Verify your API key is valid
-- Check you have sufficient credits
-- Rate limits: The cleaner waits 500ms between requests
+```bash
+# Find process using port 3000
+lsof -i :3000
 
-### Import Failures
+# Change PORT in .env
+PORT=3001
+```
 
-- Check file format matches expected structure
-- Ensure CSV has proper headers
-- Validate JSON with a linter
+### Prisma Client Errors
+
+```bash
+# Regenerate client
+npm run db:generate
+
+# Reset database (⚠️ deletes all data)
+npx prisma migrate reset
+```
+
+### Docker Issues
+
+```bash
+# Rebuild images
+docker compose build --no-cache
+
+# View logs
+docker compose logs -f
+
+# Reset everything
+docker compose down -v
+```
+
+## Architecture Notes
+
+This project follows a **layered architecture**:
+
+1. **Routes** (`src/routes/`) - HTTP endpoints, request validation
+2. **Services** (`src/services/`) - Business logic, reusable operations
+3. **Lib** (`src/lib/`) - Database client, shared utilities
+4. **Types** (`src/types/`) - Zod schemas, TypeScript types
+
+**Design principles:**
+- Routes validate input and delegate to services
+- Services contain domain logic, independent of HTTP
+- Centralized error handling for consistent API responses
+- Strict typing with Zod + TypeScript
 
 ## Contributing
 
-Contributions welcome! Please:
-
 1. Fork the repository
-2. Create a feature branch
-3. Make your changes
-4. Submit a pull request
+2. Create a feature branch: `git checkout -b feature/my-feature`
+3. Make changes and add tests
+4. Run tests: `npm test`
+5. Commit: `git commit -m "feat: add my feature"`
+6. Push and create PR
 
 ## License
 
 MIT
 
-## Support
-
-For issues and questions:
-- Open a GitHub issue
-- Check existing documentation
-- Review sample files in `/examples`
-
 ---
 
-Built with TypeScript, Fastify, Prisma, and OpenAI
+**Built with TypeScript, Fastify, Prisma, and OpenAI**
+
+For detailed setup instructions, see [SETUP.md](SETUP.md)

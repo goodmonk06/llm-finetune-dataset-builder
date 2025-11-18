@@ -3,6 +3,7 @@ import cors from '@fastify/cors';
 import fastifyStatic from '@fastify/static';
 import { config } from 'dotenv';
 import * as path from 'path';
+import { errorHandler } from './plugins/error-handler';
 import { datasetRoutes } from './routes/datasets';
 import { exampleRoutes } from './routes/examples';
 import { exportRoutes } from './routes/exports';
@@ -18,6 +19,9 @@ async function buildServer() {
       level: 'info',
     },
   });
+
+  // Register error handler first
+  await fastify.register(errorHandler);
 
   // Register CORS
   await fastify.register(cors, {

@@ -46,7 +46,13 @@ export async function exampleRoutes(fastify: FastifyInstance) {
       });
 
       if (!example) {
-        return reply.status(404).send({ error: 'Example not found' });
+        return reply.status(404).send({
+          error: {
+            message: 'Example not found',
+            code: 'NOT_FOUND',
+          },
+          timestamp: new Date().toISOString(),
+        });
       }
 
       return { example };
@@ -55,17 +61,13 @@ export async function exampleRoutes(fastify: FastifyInstance) {
 
   // Create example
   fastify.post('/examples', async (request: FastifyRequest, reply: FastifyReply) => {
-    try {
-      const data = CreateExampleSchema.parse(request.body);
+    const data = CreateExampleSchema.parse(request.body);
 
-      const example = await prisma.example.create({
-        data,
-      });
+    const example = await prisma.example.create({
+      data,
+    });
 
-      return reply.status(201).send({ example });
-    } catch (error: any) {
-      return reply.status(400).send({ error: error.message });
-    }
+    return reply.status(201).send({ example });
   });
 
   // Update example
@@ -75,16 +77,12 @@ export async function exampleRoutes(fastify: FastifyInstance) {
       const { id } = request.params;
       const updates = request.body as any;
 
-      try {
-        const example = await prisma.example.update({
-          where: { id },
-          data: updates,
-        });
+      const example = await prisma.example.update({
+        where: { id },
+        data: updates,
+      });
 
-        return { example };
-      } catch (error) {
-        return reply.status(404).send({ error: 'Example not found' });
-      }
+      return { example };
     }
   );
 
@@ -97,15 +95,11 @@ export async function exampleRoutes(fastify: FastifyInstance) {
     ) => {
       const { id } = request.params;
 
-      try {
-        await prisma.example.delete({
-          where: { id },
-        });
+      await prisma.example.delete({
+        where: { id },
+      });
 
-        return { success: true };
-      } catch (error) {
-        return reply.status(404).send({ error: 'Example not found' });
-      }
+      return { success: true };
     }
   );
 }

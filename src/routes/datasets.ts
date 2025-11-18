@@ -36,7 +36,13 @@ export async function datasetRoutes(fastify: FastifyInstance) {
       });
 
       if (!dataset) {
-        return reply.status(404).send({ error: 'Dataset not found' });
+        return reply.status(404).send({
+          error: {
+            message: 'Dataset not found',
+            code: 'NOT_FOUND',
+          },
+          timestamp: new Date().toISOString(),
+        });
       }
 
       return { dataset };
@@ -45,17 +51,13 @@ export async function datasetRoutes(fastify: FastifyInstance) {
 
   // Create dataset
   fastify.post('/datasets', async (request: FastifyRequest, reply: FastifyReply) => {
-    try {
-      const data = CreateSourceDatasetSchema.parse(request.body);
+    const data = CreateSourceDatasetSchema.parse(request.body);
 
-      const dataset = await prisma.sourceDataset.create({
-        data,
-      });
+    const dataset = await prisma.sourceDataset.create({
+      data,
+    });
 
-      return reply.status(201).send({ dataset });
-    } catch (error: any) {
-      return reply.status(400).send({ error: error.message });
-    }
+    return reply.status(201).send({ dataset });
   });
 
   // Delete dataset
@@ -67,15 +69,11 @@ export async function datasetRoutes(fastify: FastifyInstance) {
     ) => {
       const { id } = request.params;
 
-      try {
-        await prisma.sourceDataset.delete({
-          where: { id },
-        });
+      await prisma.sourceDataset.delete({
+        where: { id },
+      });
 
-        return { success: true };
-      } catch (error) {
-        return reply.status(404).send({ error: 'Dataset not found' });
-      }
+      return { success: true };
     }
   );
 }

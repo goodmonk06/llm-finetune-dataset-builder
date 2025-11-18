@@ -27,7 +27,13 @@ export async function exportRoutes(fastify: FastifyInstance) {
       });
 
       if (!exportRecord) {
-        return reply.status(404).send({ error: 'Export not found' });
+        return reply.status(404).send({
+          error: {
+            message: 'Export not found',
+            code: 'NOT_FOUND',
+          },
+          timestamp: new Date().toISOString(),
+        });
       }
 
       return { export: exportRecord };
@@ -36,32 +42,28 @@ export async function exportRoutes(fastify: FastifyInstance) {
 
   // Create export
   fastify.post('/exports', async (request: FastifyRequest, reply: FastifyReply) => {
-    try {
-      const data = CreateExportSchema.parse(request.body);
+    const data = CreateExportSchema.parse(request.body);
 
-      // Export each dataset
-      const filePaths: string[] = [];
-      for (const sourceId of data.sourceIds) {
-        const filePath = await exportService.exportDataset(
-          sourceId,
-          data.format as ExportFormat
-        );
-        filePaths.push(filePath);
-      }
-
-      // Save export record
-      const exportRecord = await prisma.datasetExport.create({
-        data: {
-          name: data.name,
-          sourceIds: data.sourceIds,
-          format: data.format,
-          filePath: filePaths.join(', '),
-        },
-      });
-
-      return reply.status(201).send({ export: exportRecord, filePaths });
-    } catch (error: any) {
-      return reply.status(400).send({ error: error.message });
+    // Export each dataset
+    const filePaths: string[] = [];
+    for (const sourceId of data.sourceIds) {
+      const filePath = await exportService.exportDataset(
+        sourceId,
+        data.format as ExportFormat
+      );
+      filePaths.push(filePath);
     }
+
+    // Save export record
+    const exportRecord = await prisma.datasetExport.create({
+      data: {
+        name: data.name,
+        sourceIds: data.sourceIds,
+        format: data.format,
+        filePath: filePaths.join(', '),
+      },
+    });
+
+    return reply.status(201).send({ export: exportRecord, filePaths });
   });
 }
