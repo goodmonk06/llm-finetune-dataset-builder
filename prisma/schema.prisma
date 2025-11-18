@@ -1,0 +1,66 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model SourceDataset {
+  id             String   @id @default(uuid())
+  name           String
+  type           DatasetType
+  rawStorageKey  String?
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  examples       Example[]
+  exports        DatasetExport[]
+
+  @@index([createdAt])
+}
+
+model Example {
+  id              String   @id @default(uuid())
+  sourceDatasetId String
+  inputText       String   @db.Text
+  outputText      String   @db.Text
+  metaJson        Json?
+  qualityScore    Float?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  sourceDataset   SourceDataset @relation(fields: [sourceDatasetId], references: [id], onDelete: Cascade)
+
+  @@index([sourceDatasetId])
+  @@index([qualityScore])
+}
+
+model DatasetExport {
+  id         String   @id @default(uuid())
+  name       String
+  sourceIds  Json     // Array of source dataset IDs
+  format     ExportFormat
+  filePath   String
+  createdAt  DateTime @default(now())
+
+  datasets   SourceDataset[]
+
+  @@index([createdAt])
+}
+
+enum DatasetType {
+  chat_log
+  faq
+  custom
+}
+
+enum ExportFormat {
+  openai_finetune
+  jsonl
+  csv
+}

@@ -1,0 +1,130 @@
+[
+  {
+    "messages": [
+      {
+        "role": "user",
+        "content": "How do I reset my password?"
+      },
+      {
+        "role": "assistant",
+        "content": "To reset your password, click the 'Forgot Password' link on the login page. Enter your email address and we'll send you a reset link. The link expires in 24 hours."
+      }
+    ],
+    "metadata": {
+      "category": "account",
+      "timestamp": "2024-01-15T10:30:00Z"
+    }
+  },
+  {
+    "messages": [
+      {
+        "role": "user",
+        "content": "What are your business hours?"
+      },
+      {
+        "role": "assistant",
+        "content": "Our customer support team is available Monday through Friday, 9:00 AM to 5:00 PM EST. We're closed on weekends and major holidays."
+      }
+    ],
+    "metadata": {
+      "category": "general",
+      "timestamp": "2024-01-15T11:00:00Z"
+    }
+  },
+  {
+    "messages": [
+      {
+        "role": "user",
+        "content": "How do I cancel my subscription?"
+      },
+      {
+        "role": "assistant",
+        "content": "You can cancel your subscription at any time from your account settings. Go to Settings > Billing > Cancel Subscription. You'll have access until the end of your current billing period."
+      }
+    ],
+    "metadata": {
+      "category": "billing",
+      "timestamp": "2024-01-15T14:20:00Z"
+    }
+  },
+  {
+    "messages": [
+      {
+        "role": "user",
+        "content": "Is there a mobile app available?"
+      },
+      {
+        "role": "assistant",
+        "content": "Yes! We have mobile apps for both iOS and Android. You can download them from the App Store or Google Play Store. Search for 'Our App Name' to find them."
+      }
+    ],
+    "metadata": {
+      "category": "product",
+      "timestamp": "2024-01-15T15:45:00Z"
+    }
+  },
+  {
+    "messages": [
+      {
+        "role": "user",
+        "content": "Can I export my data?"
+      },
+      {
+        "role": "assistant",
+        "content": "Absolutely! You can export all your data from Settings > Data & Privacy > Export Data. We'll email you a download link within 24 hours. The export includes all your information in JSON format."
+      }
+    ],
+    "metadata": {
+      "category": "data",
+      "timestamp": "2024-01-16T09:15:00Z"
+    }
+  },
+  {
+    "messages": [
+      {
+        "role": "user",
+        "content": "Do you offer student discounts?"
+      },
+      {
+        "role": "assistant",
+        "content": "Yes, we offer a 50% discount for students with a valid .edu email address or student ID verification. Visit our pricing page and click 'Student Discount' to apply."
+      }
+    ],
+    "metadata": {
+      "category": "pricing",
+      "timestamp": "2024-01-16T10:30:00Z"
+    }
+  },
+  {
+    "messages": [
+      {
+        "role": "user",
+        "content": "How secure is my data?"
+      },
+      {
+        "role": "assistant",
+        "content": "We take security very seriously. All data is encrypted at rest and in transit using industry-standard AES-256 encryption. We're SOC 2 Type II certified and undergo regular security audits."
+      }
+    ],
+    "metadata": {
+      "category": "security",
+      "timestamp": "2024-01-16T13:00:00Z"
+    }
+  },
+  {
+    "messages": [
+      {
+        "role": "user",
+        "content": "Can I invite team members?"
+      },
+      {
+        "role": "assistant",
+        "content": "Yes, on our Team and Enterprise plans you can invite unlimited team members. Go to Settings > Team > Invite Members and enter their email addresses. They'll receive an invitation to join your workspace."
+      }
+    ],
+    "metadata": {
+      "category": "collaboration",
+      "timestamp": "2024-01-16T16:20:00Z"
+    }
+  }
+]

@@ -1,0 +1,351 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>LLM Fine-tune Dataset Builder</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background: #f5f5f5;
+            color: #333;
+            line-height: 1.6;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        header {
+            background: #2c3e50;
+            color: white;
+            padding: 30px 0;
+            margin-bottom: 30px;
+        }
+
+        h1 {
+            font-size: 2em;
+            margin-bottom: 10px;
+        }
+
+        .subtitle {
+            color: #ecf0f1;
+            font-size: 1.1em;
+        }
+
+        .stats {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+
+        .stat-card {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+
+        .stat-number {
+            font-size: 2.5em;
+            font-weight: bold;
+            color: #3498db;
+        }
+
+        .stat-label {
+            color: #7f8c8d;
+            margin-top: 5px;
+        }
+
+        .datasets {
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            overflow: hidden;
+        }
+
+        .datasets h2 {
+            padding: 20px;
+            background: #34495e;
+            color: white;
+            margin: 0;
+        }
+
+        .dataset-item {
+            padding: 20px;
+            border-bottom: 1px solid #ecf0f1;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+
+        .dataset-item:hover {
+            background: #f8f9fa;
+        }
+
+        .dataset-item:last-child {
+            border-bottom: none;
+        }
+
+        .dataset-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 10px;
+        }
+
+        .dataset-name {
+            font-size: 1.2em;
+            font-weight: bold;
+            color: #2c3e50;
+        }
+
+        .dataset-type {
+            background: #3498db;
+            color: white;
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 0.85em;
+        }
+
+        .dataset-info {
+            color: #7f8c8d;
+            font-size: 0.9em;
+        }
+
+        .dataset-id {
+            font-family: monospace;
+            background: #ecf0f1;
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-size: 0.85em;
+        }
+
+        .examples {
+            margin-top: 15px;
+            padding: 15px;
+            background: #f8f9fa;
+            border-radius: 4px;
+            display: none;
+        }
+
+        .examples.show {
+            display: block;
+        }
+
+        .example {
+            margin-bottom: 15px;
+            padding: 10px;
+            background: white;
+            border-left: 3px solid #3498db;
+        }
+
+        .example-label {
+            font-weight: bold;
+            color: #2c3e50;
+            margin-bottom: 5px;
+        }
+
+        .example-text {
+            color: #555;
+            white-space: pre-wrap;
+        }
+
+        .quality-score {
+            display: inline-block;
+            margin-left: 10px;
+            padding: 2px 8px;
+            background: #2ecc71;
+            color: white;
+            border-radius: 12px;
+            font-size: 0.85em;
+        }
+
+        .quality-score.low {
+            background: #e74c3c;
+        }
+
+        .loading {
+            text-align: center;
+            padding: 40px;
+            color: #7f8c8d;
+        }
+
+        .error {
+            background: #e74c3c;
+            color: white;
+            padding: 20px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+        }
+
+        button {
+            background: #3498db;
+            color: white;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 4px;
+            cursor: pointer;
+            margin-top: 10px;
+        }
+
+        button:hover {
+            background: #2980b9;
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <div class="container">
+            <h1>LLM Fine-tune Dataset Builder</h1>
+            <p class="subtitle">Browse and manage your fine-tuning datasets</p>
+        </div>
+    </header>
+
+    <div class="container">
+        <div id="error" class="error" style="display: none;"></div>
+
+        <div class="stats" id="stats">
+            <div class="stat-card">
+                <div class="stat-number" id="totalDatasets">-</div>
+                <div class="stat-label">Datasets</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-number" id="totalExamples">-</div>
+                <div class="stat-label">Total Examples</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-number" id="totalExports">-</div>
+                <div class="stat-label">Exports</div>
+            </div>
+        </div>
+
+        <div class="datasets">
+            <h2>Datasets</h2>
+            <div id="datasetList" class="loading">
+                Loading datasets...
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const API_URL = window.location.origin;
+
+        async function fetchData() {
+            try {
+                // Fetch datasets
+                const datasetsRes = await fetch(`${API_URL}/datasets`);
+                const datasetsData = await datasetsRes.json();
+                const datasets = datasetsData.datasets;
+
+                // Fetch exports
+                const exportsRes = await fetch(`${API_URL}/exports`);
+                const exportsData = await exportsRes.json();
+                const exports = exportsData.exports;
+
+                // Update stats
+                const totalExamples = datasets.reduce((sum, ds) => sum + ds._count.examples, 0);
+                document.getElementById('totalDatasets').textContent = datasets.length;
+                document.getElementById('totalExamples').textContent = totalExamples;
+                document.getElementById('totalExports').textContent = exports.length;
+
+                // Render datasets
+                renderDatasets(datasets);
+            } catch (error) {
+                showError('Failed to load data: ' + error.message);
+            }
+        }
+
+        function renderDatasets(datasets) {
+            const container = document.getElementById('datasetList');
+
+            if (datasets.length === 0) {
+                container.innerHTML = '<div class="loading">No datasets found. Use the CLI to import data.</div>';
+                return;
+            }
+
+            container.innerHTML = datasets.map(dataset => `
+                <div class="dataset-item" onclick="toggleExamples('${dataset.id}')">
+                    <div class="dataset-header">
+                        <div class="dataset-name">${dataset.name}</div>
+                        <div class="dataset-type">${dataset.type}</div>
+                    </div>
+                    <div class="dataset-info">
+                        <span class="dataset-id">${dataset.id}</span> •
+                        ${dataset._count.examples} examples •
+                        Created ${new Date(dataset.createdAt).toLocaleDateString()}
+                    </div>
+                    <button onclick="event.stopPropagation(); loadExamples('${dataset.id}')">
+                        Load Examples
+                    </button>
+                    <div id="examples-${dataset.id}" class="examples"></div>
+                </div>
+            `).join('');
+        }
+
+        async function loadExamples(datasetId) {
+            const container = document.getElementById(`examples-${datasetId}`);
+            container.innerHTML = '<div class="loading">Loading examples...</div>';
+            container.classList.add('show');
+
+            try {
+                const res = await fetch(`${API_URL}/datasets/${datasetId}/examples?limit=5`);
+                const data = await res.json();
+                const examples = data.examples;
+
+                if (examples.length === 0) {
+                    container.innerHTML = '<div class="loading">No examples found.</div>';
+                    return;
+                }
+
+                container.innerHTML = examples.map((ex, idx) => {
+                    const qualityClass = ex.qualityScore && ex.qualityScore < 0.7 ? 'low' : '';
+                    const qualityBadge = ex.qualityScore
+                        ? `<span class="quality-score ${qualityClass}">Quality: ${ex.qualityScore.toFixed(2)}</span>`
+                        : '';
+
+                    return `
+                        <div class="example">
+                            <div class="example-label">Input ${idx + 1} ${qualityBadge}</div>
+                            <div class="example-text">${ex.inputText.substring(0, 200)}${ex.inputText.length > 200 ? '...' : ''}</div>
+                            <div class="example-label" style="margin-top: 10px;">Output ${idx + 1}</div>
+                            <div class="example-text">${ex.outputText.substring(0, 200)}${ex.outputText.length > 200 ? '...' : ''}</div>
+                        </div>
+                    `;
+                }).join('');
+
+                if (data.total > 5) {
+                    container.innerHTML += `<div class="loading">Showing 5 of ${data.total} examples</div>`;
+                }
+            } catch (error) {
+                container.innerHTML = `<div class="error">Failed to load examples: ${error.message}</div>`;
+            }
+        }
+
+        function toggleExamples(datasetId) {
+            const container = document.getElementById(`examples-${datasetId}`);
+            container.classList.toggle('show');
+        }
+
+        function showError(message) {
+            const errorDiv = document.getElementById('error');
+            errorDiv.textContent = message;
+            errorDiv.style.display = 'block';
+        }
+
+        // Load data on page load
+        fetchData();
+
+        // Refresh every 30 seconds
+        setInterval(fetchData, 30000);
+    </script>
+</body>
+</html>

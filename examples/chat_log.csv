@@ -1,0 +1,7 @@
+role,message
+user,How do I create a new project?
+assistant,"To create a new project, click the 'New Project' button in the dashboard. Give your project a name, select a template, and click 'Create'. Your new project will open automatically."
+user,Where can I find my API keys?
+assistant,"Your API keys are located in Settings > Developer > API Keys. You can create new keys or revoke existing ones. Keep your keys secure and never share them publicly."
+user,How do I add collaborators?
+assistant,"Go to your project settings and click the 'Collaborators' tab. Enter the email address of the person you want to invite and select their permission level (View, Edit, or Admin)."

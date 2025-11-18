@@ -1,0 +1,4 @@
+question,answer,category,tags
+How do I change my email address?,"Go to Settings > Profile > Email. Enter your new email address and click 'Update'. You'll receive a verification email at your new address.",account,"email,settings,profile"
+What file formats are supported?,"We support JPEG, PNG, GIF, PDF, DOC, DOCX, XLS, XLSX, and TXT files up to 100MB each.",technical,"files,upload,formats"
+Is there a dark mode?,"Yes! Toggle dark mode from Settings > Appearance > Theme. You can also set it to automatically match your system preferences.",ui,"theme,dark-mode,appearance"
